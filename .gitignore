@@ -139,3 +139,24 @@ cython_debug/
 .vscode/
 
 raw-word-list/
+
+.lumen-env/
+
+data/Catalan
+data/Croatian
+data/Danish
+data/Dutch
+data/Finnish
+data/French
+data/Greek
+data/Italian
+data/Lithuanian
+data/Macedonian
+data/Norwegian
+data/Polish
+data/Portuguese
+data/Romanian
+data/Russian
+data/Slovenian
+data/Ukrainian
+data/Swedish
