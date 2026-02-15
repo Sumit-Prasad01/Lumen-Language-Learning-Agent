@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import random
 
@@ -70,50 +71,70 @@ def get_n_random_words_by_difficulty_level(language: str,
     return random_words
 
 @tool
-def translate_words(random_words: list,
+def translate_words(random_words: list[str],
                     source_language: str,
                     target_language: str) -> dict:
     """
-    Translates a list of words from a source language to a target language using
-    a language model. The method ensures output is in the expected JSON format,
-    containing translations corresponding to the provided input words.
+        Translates a list of words from a source language to a target language using
+        a language model. The method ensures output is in the expected JSON format,
+        containing translations corresponding to the provided input words.
 
-    :param random_words: A list of words to be translated.
-    :param source_language: The language of the input words.
-    :param target_language: The language to translate the words into.
-    :return: A dictionary containing the translations with the structure:
-             {"translations": [{"source": "<original>", "target": "<translated>"}, ...]}.
+        :param random_words: A list of words to be translated.
+        :param source_language: The language of the input words.
+        :param target_language: The language to translate the words into.
+        :return: A dictionary containing the translations with the structure:
+                {"translations": [{"source": "<original>", "target": "<translated>"}, ...]}.
     """
+
     prompt = (
         f"You are a precise translation engine.\n"
         f"Translate each of the following {len(random_words)} words from {source_language} to {target_language}.\n"
         f"Return ONLY valid JSON with this exact structure:\n"
         f'{{"translations": [{{"source": "<original>", "target": "<translated>"}}, ...]}}\n'
-        f"No explanations, no extra fields, no markdown.\n"
+        f"STRICT RULES:\n"
+        f"- Use double quotes only\n"
+        f"- No markdown\n"
+        f"- No explanations\n"
+        f"- No trailing commas\n"
         f"Words: {json.dumps(random_words, ensure_ascii=False)}"
     )
 
     response = translation_model.invoke([HumanMessage(content=prompt)])
-    text = getattr(response, "content", str(response))
+    text = getattr(response, "content", str(response)).strip()
 
-    # Try to parse JSON strictly; if it fails, attempt to extract the first JSON object.
+    def extract_and_fix_json(raw: str) -> dict:
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if not match:
+            return {}
+
+        json_text = match.group(0).strip()
+
+        # Fix common LLM JSON mistakes
+        json_text = json_text.replace("'", '"')  # single quotes -> double quotes
+        json_text = re.sub(r",\s*}", "}", json_text)  # trailing commas
+        json_text = re.sub(r",\s*]", "]", json_text)
+
+        try:
+            return json.loads(json_text)
+        except json.JSONDecodeError:
+            return {}
+
     try:
         parsed = json.loads(text)
-    except Exception:
-        import re
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        parsed = json.loads(match.group(0)) if match else {}
+    except json.JSONDecodeError:
+        parsed = extract_and_fix_json(text)
 
     translations_list = parsed.get("translations", [])
-    # Build a mapping from the model output
-    model_map = {item.get("source", ""): item.get("target", "") for item in translations_list if isinstance(item, dict)}
 
-    # Ensure we return translations in the same order as input; fall back to identity if missing
+    model_map = {
+        item.get("source", ""): item.get("target", "")
+        for item in translations_list
+        if isinstance(item, dict)
+    }
+
     ordered_translations = [
         {"source": w, "target": model_map.get(w, model_map.get(w.capitalize(), w))}
         for w in random_words
     ]
 
-    return {
-        "translations": ordered_translations,
-    }
+    return {"translations": ordered_translations}

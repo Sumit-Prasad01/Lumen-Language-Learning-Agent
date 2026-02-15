@@ -6,3 +6,6 @@ OUTPUT_DIR = "raw-word-list"
 
 
 RAW_WORD_LIST_DIR = "raw-word-list"
+
+
+CLANKI_JS = "clanki/build/index.js"
