@@ -1,0 +1,23 @@
+SPACY_MODELS = {
+    "Catalan": "ca_core_news_trf",
+    "Croatian": "hr_core_news_lg",
+    "Danish": "da_core_news_trf",
+    "Dutch": "nl_core_news_lg",
+    "English": "en_core_web_trf",
+    "Finnish": "fi_core_news_lg",
+    "French": "fr_dep_news_trf",
+    "German": "de_dep_news_trf",
+    "Greek": "el_core_news_lg",
+    "Italian": "it_core_news_lg",
+    "Lithuanian": "lt_core_news_lg",
+    "Macedonian": "mk_core_news_lg",
+    "Norwegian": "nb_core_news_lg",
+    "Polish": "pl_core_news_lg",
+    "Portuguese": "pt_core_news_lg",
+    "Romanian": "ro_core_news_lg",
+    "Russian": "ru_core_news_lg",
+    "Slovenian": "sl_core_news_trf",
+    "Spanish": "es_dep_news_trf",
+    "Swedish": "sv_core_news_lg",
+    "Ukrainian": "uk_core_news_trf"
+}
