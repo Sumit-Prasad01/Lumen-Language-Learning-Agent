@@ -20,3 +20,4 @@ langchain-core
 langgraph
 langchain-groq
 langchain-ollama
+langchain-mcp-adapters
