@@ -1,3 +1,4 @@
+import re
 import asyncio
 from typing import TypedDict, Annotated, Optional
 
@@ -9,7 +10,8 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 
 from agent.tools import (
-    get_n_random_words
+    get_n_random_words,
+    get_n_random_words_by_difficulty_level
 )
 from utils.logger import get_logger
 
@@ -20,11 +22,13 @@ class AgentState(TypedDict):
     messages : Annotated[list[AnyMessage], add_messages]
     source_language: Optional[str]
     number_of_words: Optional[int]
+    word_difficulty: Optional[str]
 
 
 # Tools
 local_tools = [
     get_n_random_words,
+    get_n_random_words_by_difficulty_level
 ]
 
 
@@ -38,6 +42,7 @@ def assistant(state : AgentState):
     textual_description_of_tools = """
         def get_n_random_words(language: str,
                        n: int, ) -> list:
+    
         Selects a specified number of random words from a language-specific word list.
 
         The function reads a JSON file containing words for the specified language from
@@ -47,6 +52,28 @@ def assistant(state : AgentState):
         :param language: A string representing the language for which to fetch the word list.
         :param n: An integer specifying the number of random words to retrieve.
         :return: A list containing `n` randomly selected words.
+
+
+
+        def get_n_random_words_by_difficulty_level(language: str,
+                                           difficulty_level: str,
+                                           n: int
+                                           ) -> list:
+    
+        Retrieves a specified number of random words filtered by a given difficulty level
+        from a word list corresponding to a specific language. The function reads the
+        word list from a JSON file located in the directory `data/{language}/word-list-cleaned.json`.
+
+        :param language: The language of the word list to be used.
+        :type language: str
+        :param difficulty_level: The difficulty level to filter words by. Possible values
+            depend on the data structure in the JSON file. The only valid values are "beginner",
+            "intermediate" and "advanced".
+        :type difficulty_level: str
+        :param n: The number of random words to retrieve.
+        :type n: int
+        :return: A list containing `n` random words filtered by the specified difficulty level.
+        :rtype: list
     """
     
     sys_msg = SystemMessage(content = f"""
@@ -57,6 +84,7 @@ def assistant(state : AgentState):
         Your job is to check:
         1. Which source language the user wants words from.
         2. How many words they want.
+        3. Whether they want words of a specific difficulty or just random words.
 
         Here are some example workflows:
         input: Get 20 random words in Spanish.
@@ -65,7 +93,8 @@ def assistant(state : AgentState):
         
         input: Get 10 hard words in German
         source language: German
-        number of words: 10                    
+        number of words: 10
+        word difficulty: advanced                  
     """)
 
     # LLM
@@ -74,12 +103,13 @@ def assistant(state : AgentState):
         model = "qwen3:8b",
         temperature = 0.7
         )
-    llm_with_tools = llm.bind_tools(tools)
+    llm_with_tools = llm.bind_tools(tools, tool_choice="any")
 
     return {
         "messages" : [llm_with_tools.invoke([sys_msg] + state["messages"])],
         "source_language": state["source_language"],
         "number_of_words": state["number_of_words"],
+        "word_difficulty": state["word_difficulty"]
     }
 
 
@@ -107,20 +137,21 @@ async def build_graph():
 async def main():
     """Main async function to run the application."""
 
-    react_garph = await build_graph()
+    react_graph = await build_graph()
 
-    user_prompt = "Please get 10 random words in German."
+    user_prompt = "Please get 10 beginner words in English."
 
     messages = [HumanMessage(content = user_prompt)]
 
-    result = await react_garph.ainvoke({
-        "messages" : messages,
-        "source_language" : None,
-        "number_of_words" : None
+    
+    result = await react_graph.ainvoke({
+        "messages": messages,
+        "source_language": None,
+        "number_of_words": None,
+        "word_difficulty": None
     })
 
-    logger.info(f"Final messages : {result['messages'][-1].content}")
-
+    logger.info(f"Final messages: {result['messages'][-1].content}")
 
 if __name__ == "__main__":
     asyncio.run(main())
